@@ -57,7 +57,7 @@ def create_email(jobs):
 def send_email(body):
     sender = os.getenv("GMAIL_EMIAL")
     password = os.getenv("GMAIL_PASSWORD")
-    receiver = os.getenv("DSETINATION_EMAIL")
+    receiver = os.getenv("DESTINATION_EMAIL")
     if not sender or not password or not receiver:
         with open("job_digest.txt", "w", encoding="utf-8") as f:
             f.write(body)
