@@ -23,7 +23,9 @@ jobs:
 
       - name: Run job script
         env:
-          OUTLOOK_EMAIL: ${{ secrets.OUTLOOK_EMAIL }}
-          OUTLOOK_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
-          DEST_EMAIL: ${{ secrets.TO_MAIL }}
+          SMTP_SERVER: smtp.gmail.com
+          SMTP_PORT: 587
+          SENDER_EMAIL: ${{ secrets.GMAIL_EMAIL }}
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+          DEST_EMAIL: ${{ secrets.DESTINATION_EMAIL }}
         run: python job_finder.py
