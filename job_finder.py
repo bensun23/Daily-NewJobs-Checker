@@ -21,13 +21,13 @@ def generate_outreach(title, company=""):
     company_line = f"Hi {company} hiring team," if company else "Hi there,"
     return f"""{company_line}
 
-I'm {Bensun_Gundabathina}. I found the role '{title}' and I'm really interested. 
+I'm {MY_NAME}. I found the role '{title}' and I'm really interested. 
 I have beginner-level experience in Data Science + Machine Learning and would love to contribute.
 
 Could we connect? Thank you!
 
 Best,
-{Bensun_Gundabathina}
+{MY_NAME}
 """
 
 def fetch_jobs():
@@ -55,9 +55,9 @@ def create_email(jobs):
     return body
 
 def send_email(body):
-    sender = os.getenv("bensunlovesmemes@gmail.com")
-    password = os.getenv("Bensun@23#08")
-    receiver = os.getenv("bensunlovesmemes@gmail.com")
+    sender = os.getenv("GMAIL_EMIAL")
+    password = os.getenv("GMAIL_PASSWORD")
+    receiver = os.getenv("DSETINATION_EMAIL")
     if not sender or not password or not receiver:
         with open("job_digest.txt", "w", encoding="utf-8") as f:
             f.write(body)
