@@ -50,29 +50,41 @@ def create_email(jobs):
         body += f"Link: {job['link']}\n"
         body += f"Description: {job['summary']}\n\n"
         body += "LinkedIn Outreach Message:\n"
-        body += generate_outreach(job['title'])
+        outreach_msg = generate_outreach(job['title'])
+        body += outreach_msg
         body += "\n" + ("-" * 50) + "\n\n"
+        # DEBUG: print each job and message
+        print(f"Job {i}: {job['title']}")
+        print(f"LinkedIn Message:\n{outreach_msg}")
+        print("-"*40)
     return body
 
 def send_email(body):
     sender = os.getenv("GMAIL_EMAIL")
     password = os.getenv("GMAIL_PASSWORD")
     receiver = os.getenv("DESTINATION_EMAIL")
+
+    print("Sender:", sender)
+    print("Receiver:", receiver)
+    print("Password length:", len(password) if password else 0)
+
     if not sender or not password or not receiver:
         with open("job_digest.txt", "w", encoding="utf-8") as f:
             f.write(body)
         print("Missing SMTP secrets — saved job_digest.txt in workspace.")
         return
+
     msg = EmailMessage()
     msg["Subject"] = "Daily DS & AIML Job Digest"
     msg["From"] = sender
     msg["To"] = receiver
     msg.set_content(body)
+
     with smtplib.SMTP("smtp.gmail.com", 587) as server:
         server.starttls()
         server.login(sender, password)
         server.send_message(msg)
-    print("Email sent.")
+    print("Email sent successfully!")
 
 if __name__ == "__main__":
     jobs = fetch_jobs()
