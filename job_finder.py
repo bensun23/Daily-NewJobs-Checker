@@ -55,7 +55,7 @@ def create_email(jobs):
     return body
 
 def send_email(body):
-    sender = os.getenv("GMAIL_EMIAL")
+    sender = os.getenv("GMAIL_EMAIL")
     password = os.getenv("GMAIL_PASSWORD")
     receiver = os.getenv("DESTINATION_EMAIL")
     if not sender or not password or not receiver:
