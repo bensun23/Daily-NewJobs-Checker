@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 # --------------------------
 # File to track sent jobs
 # --------------------------
-SENT_FILE = "sent_jobs.json"
+SENT_FILE = os.path.join(os.path.dirname(__file__), "sent_jobs.json")
 
 def load_sent_jobs():
     if os.path.exists(SENT_FILE):
@@ -65,7 +65,7 @@ def send_telegram_message(message):
 # Naukri Job Scraper
 # --------------------------
 def fetch_naukri_jobs():
-    url = "https://www.naukri.com/software-developer-jobs"  # Change query as needed
+    url = "https://www.naukri.com/software-developer-jobs"
     headers = {"User-Agent": "Mozilla/5.0"}
     response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.text, "html.parser")
@@ -94,7 +94,6 @@ def check_jobs():
         send_email("New Job Alerts", body)
         send_telegram_message(body)
 
-        # Update sent jobs file
         sent_jobs.extend(new_jobs)
         save_sent_jobs(sent_jobs)
         print(f"Sent {len(new_jobs)} new jobs.")
