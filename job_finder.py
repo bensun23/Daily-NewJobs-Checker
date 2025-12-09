@@ -1,6 +1,7 @@
 import os
 import smtplib
 import feedparser
+import requests
 from email.message import EmailMessage
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -53,7 +54,7 @@ def create_email(jobs):
         outreach_msg = generate_outreach(job['title'])
         body += outreach_msg
         body += "\n" + ("-" * 50) + "\n\n"
-        # DEBUG: print each job and message
+
         print(f"Job {i}: {job['title']}")
         print(f"LinkedIn Message:\n{outreach_msg}")
         print("-"*40)
@@ -86,7 +87,35 @@ def send_email(body):
         server.send_message(msg)
     print("Email sent successfully!")
 
+# -------------------------------------------
+# 🚀 TELEGRAM FUNCTION (SAFE — does not affect email)
+# -------------------------------------------
+
+def send_telegram_message(message):
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not bot_token or not chat_id:
+        print("Telegram secrets missing.")
+        return
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": message
+    }
+
+    resp = requests.post(url, data=payload)
+    print("Telegram status:", resp.status_code)
+
+# -------------------------------------------
+# MAIN EXECUTION
+# -------------------------------------------
+
 if __name__ == "__main__":
     jobs = fetch_jobs()
     email_body = create_email(jobs)
     send_email(email_body)
+
+    # Send Telegram notification (SAFE)
+    send_telegram_message("Your Daily Job Digest is ready! Check your email 📩")
