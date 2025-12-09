@@ -45,7 +45,7 @@ def send_email(subject, body):
     except Exception as e:
         print("Email failed:", e)
 
-# --------------------------
+# -------------------------
 # Telegram Notification
 # --------------------------
 def send_telegram_message(message):
