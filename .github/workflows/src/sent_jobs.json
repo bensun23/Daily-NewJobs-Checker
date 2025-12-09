@@ -1,0 +1,1 @@
+SENT_FILE = os.path.join(os.path.dirname(__file__), "sent_jobs.json")
