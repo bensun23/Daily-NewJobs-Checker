@@ -36,7 +36,7 @@ jobs:
           DESTINATION_EMAIL: ${{ secrets.DESTINATION_EMAIL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python src/job_checker.py
+        run: python src/job_finder.py
 
       - name: Save sent jobs artifact
         if: always()
