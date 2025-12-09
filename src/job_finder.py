@@ -3,23 +3,7 @@ import requests
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
-import json
 from bs4 import BeautifulSoup
-
-# --------------------------
-# File to track sent jobs
-# --------------------------
-SENT_FILE = os.path.join(os.path.dirname(__file__), "sent_jobs.json")
-
-def load_sent_jobs():
-    if os.path.exists(SENT_FILE):
-        with open(SENT_FILE, "r") as f:
-            return json.load(f)
-    return []
-
-def save_sent_jobs(sent_jobs):
-    with open(SENT_FILE, "w") as f:
-        json.dump(sent_jobs, f)
 
 # --------------------------
 # Email Notification
@@ -45,6 +29,7 @@ def send_email(subject, body):
     except Exception as e:
         print("Email failed:", e)
 
+
 # --------------------------
 # Telegram Notification
 # --------------------------
@@ -61,10 +46,13 @@ def send_telegram_message(message):
     except Exception as e:
         print("Telegram failed:", e)
 
+
 # --------------------------
 # Naukri Job Scraper
 # --------------------------
 def fetch_naukri_jobs():
+    print("Scraping Naukri jobs...")
+
     url = "https://www.naukri.com/software-developer-jobs"
     headers = {"User-Agent": "Mozilla/5.0"}
     response = requests.get(url, headers=headers)
@@ -79,26 +67,28 @@ def fetch_naukri_jobs():
             company = company_tag.text.strip()
             link = title_tag["href"]
             jobs.append(f"{title} - {company}\n{link}")
+
+    print(f"Total jobs scraped: {len(jobs)}")
     return jobs
 
+
 # --------------------------
-# Job Check Function
+# Main Job Checker
 # --------------------------
 def check_jobs():
-    scraped_jobs = fetch_naukri_jobs()
-    sent_jobs = load_sent_jobs()
-    new_jobs = [job for job in scraped_jobs if job not in sent_jobs]
+    jobs = fetch_naukri_jobs()
 
-    if new_jobs:
-        body = "New Jobs Found:\n\n" + "\n\n".join(new_jobs)
-        send_email("New Job Alerts", body)
+    if jobs:
+        body = "Daily Job Report:\n\n" + "\n\n".join(jobs)
+        send_email("Daily Job Report", body)
         send_telegram_message(body)
-
-        sent_jobs.extend(new_jobs)
-        save_sent_jobs(sent_jobs)
-        print(f"Sent {len(new_jobs)} new jobs.")
+        print("Sent all jobs.")
     else:
-        print("No new jobs today.")
+        msg = "No new jobs found today. Bot is working correctly."
+        send_email("Daily Job Report - No Jobs", msg)
+        send_telegram_message(msg)
+        print(msg)
+
 
 if __name__ == "__main__":
     check_jobs()
