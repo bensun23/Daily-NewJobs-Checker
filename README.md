@@ -115,7 +115,7 @@ Add these:
 
 ---
 
-# 🧠 **How the Bot Works **
+## **🧠 How the Bot Works**
 
 1. Every day at 6 PM IST, GitHub Actions triggers the workflow.
 
