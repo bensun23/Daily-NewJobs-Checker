@@ -18,6 +18,13 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Ensure sent_jobs.json exists
+        run: |
+          mkdir -p src
+          if [ ! -f src/sent_jobs.json ]; then
+            echo "[]" > src/sent_jobs.json
+          fi
+
       - name: Cache sent jobs
         uses: actions/cache@v4
         with:
@@ -36,7 +43,7 @@ jobs:
           DESTINATION_EMAIL: ${{ secrets.DESTINATION_EMAIL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python src/job_finder.py  # <-- Make sure this matches your file name
+        run: python src/job_finder.py
 
       - name: Save sent jobs artifact
         if: always()
