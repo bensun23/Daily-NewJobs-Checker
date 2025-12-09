@@ -1,121 +1,105 @@
-import os
 import smtplib
-import feedparser
 import requests
-from email.message import EmailMessage
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
+import json
 from bs4 import BeautifulSoup
-from datetime import datetime
 
-MY_NAME = "Bensun"
+# --------------------------
+# File to track sent jobs
+# --------------------------
+SENT_FILE = "sent_jobs.json"
 
-RSS_SOURCES = {
-    "WeWorkRemotely": "https://weworkremotely.com/categories/remote-data-science-jobs.rss",
-    "RemoteOK": "https://remoteok.com/remote-jobs.rss"
-}
+def load_sent_jobs():
+    if os.path.exists(SENT_FILE):
+        with open(SENT_FILE, "r") as f:
+            return json.load(f)
+    return []
 
-def clean_text(html, limit=250):
-    soup = BeautifulSoup(html, "html.parser")
-    text = " ".join(soup.get_text().split())
-    return text[:limit] + ("..." if len(text) > limit else "")
+def save_sent_jobs(sent_jobs):
+    with open(SENT_FILE, "w") as f:
+        json.dump(sent_jobs, f)
 
-def generate_outreach(title, company=""):
-    company_line = f"Hi {company} hiring team," if company else "Hi there,"
-    return f"""{company_line}
+# --------------------------
+# Email Notification
+# --------------------------
+def send_email(subject, body):
+    email_user = os.getenv("GMAIL_EMAIL")
+    email_pass = os.getenv("GMAIL_PASSWORD")
+    email_to = os.getenv("DESTINATION_EMAIL")
 
-I'm {MY_NAME}. I found the role '{title}' and I'm really interested. 
-I have beginner-level experience in Data Science + Machine Learning and would love to contribute.
+    msg = MIMEMultipart()
+    msg["From"] = email_user
+    msg["To"] = email_to
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
 
-Could we connect? Thank you!
-
-Best,
-{MY_NAME}
-"""
-
-def fetch_jobs():
-    all_jobs = []
-    for site, rss in RSS_SOURCES.items():
-        feed = feedparser.parse(rss)
-        for entry in feed.entries[:5]:
-            all_jobs.append({
-                "title": entry.title,
-                "link": entry.link,
-                "summary": clean_text(entry.get("summary", "")),
-                "source": site
-            })
-    return all_jobs
-
-def create_email(jobs):
-    body = f"Daily Job Digest – {datetime.now().strftime('%Y-%m-%d')}\n\n"
-    for i, job in enumerate(jobs, 1):
-        body += f"{i}. {job['title']} ({job['source']})\n"
-        body += f"Link: {job['link']}\n"
-        body += f"Description: {job['summary']}\n\n"
-        body += "LinkedIn Outreach Message:\n"
-        outreach_msg = generate_outreach(job['title'])
-        body += outreach_msg
-        body += "\n" + ("-" * 50) + "\n\n"
-
-        print(f"Job {i}: {job['title']}")
-        print(f"LinkedIn Message:\n{outreach_msg}")
-        print("-"*40)
-    return body
-
-def send_email(body):
-    sender = os.getenv("GMAIL_EMAIL")
-    password = os.getenv("GMAIL_PASSWORD")
-    receiver = os.getenv("DESTINATION_EMAIL")
-
-    print("Sender:", sender)
-    print("Receiver:", receiver)
-    print("Password length:", len(password) if password else 0)
-
-    if not sender or not password or not receiver:
-        with open("job_digest.txt", "w", encoding="utf-8") as f:
-            f.write(body)
-        print("Missing SMTP secrets — saved job_digest.txt in workspace.")
-        return
-
-    msg = EmailMessage()
-    msg["Subject"] = "Daily DS & AIML Job Digest"
-    msg["From"] = sender
-    msg["To"] = receiver
-    msg.set_content(body)
-
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
-        server.login(sender, password)
-        server.send_message(msg)
-    print("Email sent successfully!")
+        server.login(email_user, email_pass)
+        server.sendmail(email_user, email_to, msg.as_string())
+        server.quit()
+        print("Email sent successfully!")
+    except Exception as e:
+        print("Email failed:", e)
 
-# -------------------------------------------
-# 🚀 TELEGRAM FUNCTION (SAFE — does not affect email)
-# -------------------------------------------
-
+# --------------------------
+# Telegram Notification
+# --------------------------
 def send_telegram_message(message):
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
-    if not bot_token or not chat_id:
-        print("Telegram secrets missing.")
-        return
-
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": message
-    }
+    data = {"chat_id": chat_id, "text": message}
 
-    resp = requests.post(url, data=payload)
-    print("Telegram status:", resp.status_code)
+    try:
+        r = requests.post(url, data=data)
+        print("Telegram sent:", r.text)
+    except Exception as e:
+        print("Telegram failed:", e)
 
-# -------------------------------------------
-# MAIN EXECUTION
-# -------------------------------------------
+# --------------------------
+# Naukri Job Scraper
+# --------------------------
+def fetch_naukri_jobs():
+    url = "https://www.naukri.com/software-developer-jobs"  # Change query as needed
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(url, headers=headers)
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    jobs = []
+    for job_card in soup.find_all("article", class_="jobTuple"):
+        title_tag = job_card.find("a", class_="title")
+        company_tag = job_card.find("a", class_="subTitle")
+        if title_tag and company_tag:
+            title = title_tag.text.strip()
+            company = company_tag.text.strip()
+            link = title_tag["href"]
+            jobs.append(f"{title} - {company}\n{link}")
+    return jobs
+
+# --------------------------
+# Job Check Function
+# --------------------------
+def check_jobs():
+    scraped_jobs = fetch_naukri_jobs()
+    sent_jobs = load_sent_jobs()
+    new_jobs = [job for job in scraped_jobs if job not in sent_jobs]
+
+    if new_jobs:
+        body = "New Jobs Found:\n\n" + "\n\n".join(new_jobs)
+        send_email("New Job Alerts", body)
+        send_telegram_message(body)
+
+        # Update sent jobs file
+        sent_jobs.extend(new_jobs)
+        save_sent_jobs(sent_jobs)
+        print(f"Sent {len(new_jobs)} new jobs.")
+    else:
+        print("No new jobs today.")
 
 if __name__ == "__main__":
-    jobs = fetch_jobs()
-    email_body = create_email(jobs)
-    send_email(email_body)
-
-    # Send Telegram notification (SAFE)
-    send_telegram_message("Your Daily Job Digest is ready! Check your email 📩")
+    check_jobs()
