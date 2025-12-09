@@ -1,0 +1,46 @@
+name: Job Checker Bot
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  run-job-checker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Cache sent jobs
+        uses: actions/cache@v4
+        with:
+          path: src/sent_jobs.json
+          key: sent-jobs-cache
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+          pip install beautifulsoup4
+
+      - name: Run job checker
+        env:
+          GMAIL_EMAIL: ${{ secrets.GMAIL_EMAIL }}
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+          DESTINATION_EMAIL: ${{ secrets.DESTINATION_EMAIL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python src/job_finder.py  # <-- Make sure this matches your file name
+
+      - name: Save sent jobs artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sent-jobs
+          path: src/sent_jobs.json
