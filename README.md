@@ -32,25 +32,44 @@
 
 ---
 
-# 📌 **Features**
-✔ Runs automatically every **6 hours**  
+# 📌 **About this Bot**
+✔ Runs automatically every **6 pm everyday**  
+
 ✔ Scrapes job websites (customizable)  
+
 ✔ Sends **Email** alerts  
+
 ✔ Sends **Telegram** alerts  
+
 ✔ Works even when your PC is OFF  
+
 ✔ Fully serverless using GitHub Actions  
+
+✔ Searches Naukri.com daily at 6:00 PM IST 
+
+✔ Finds AIML Fresher, Data Science Fresher, Entry Level Tech jobs 
+
+✔ Sends job results to your Email 
+
+✔ Also sends notifications to Telegram 
+
+✔ Uses BeautifulSoup, Requests, GitHub Actions, Gmail App Password 
+
+✔ Fully automated — free — no server required 
+
 
 ---
 
 # 🗂️ **Project Structure**
 
 ```
-job-checker/
-│
-├── job_checker.py
-└── .github/
-    └── workflows/
-        └── job-checker.yml
+📦 Daily-NewJobs-Checker
+ ┣ 📜 job_finder.py
+ ┣ 📜 requirements.txt
+ ┣ 📜 README.md
+ ┗ 📂 .github/workflows/
+      ┗ 📜 main.yml
+
 ```
 
 ---
@@ -96,14 +115,21 @@ Add these:
 
 ---
 
-# 🧠 **How It Works (Simple Explanation)**
+# 🧠 **How the Bot Works **
 
-1. GitHub Actions runs your script **every 6 hours**  
-2. The script checks new job postings  
-3. If new results are found →  
-   - Sends **email**
-   - Sends **telegram message**  
-4. Results are logged in GitHub Actions  
+1. Every day at 6 PM IST, GitHub Actions triggers the workflow.
+
+2. The script scrapes Naukri for fresh ML/Data Science fresher jobs.
+
+3. If jobs exist →
+
+            ✔ Email is sent
+
+            ✔ Telegram message is sent
+
+5. If no jobs → no notification
+
+6. Full logs appear in GitHub Actions run. 
 
 This works even if your laptop is off — GitHub servers run it.
 
@@ -112,76 +138,74 @@ This works even if your laptop is off — GitHub servers run it.
 # 🧪 **Full Python Code → `job_checker.py`**
 
 ```python
-import smtplib
+import os
 import requests
+from bs4 import BeautifulSoup
+import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import os
 
-# --------------------------
-#  Email Notification
-# --------------------------
+# ------- EMAIL FUNCTION -------
 def send_email(subject, body):
-    email_user = os.getenv("EMAIL_USER")
-    email_pass = os.getenv("EMAIL_PASS")
-    email_to = os.getenv("EMAIL_TO")
+    sender = os.getenv("SENDER_EMAIL")
+    password = os.getenv("GMAIL_PASSWORD")
+    receiver = os.getenv("DEST_EMAIL")
 
     msg = MIMEMultipart()
-    msg["From"] = email_user
-    msg["To"] = email_to
+    msg["From"] = sender
+    msg["To"] = receiver
     msg["Subject"] = subject
-
     msg.attach(MIMEText(body, "plain"))
 
     try:
         server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
-        server.login(email_user, email_pass)
-        server.sendmail(email_user, email_to, msg.as_string())
+        server.login(sender, password)
+        server.sendmail(sender, receiver, msg.as_string())
         server.quit()
         print("Email sent successfully!")
     except Exception as e:
         print("Email failed:", e)
 
-
-# --------------------------
-#  Telegram Notification
-# --------------------------
-def send_telegram_message(message):
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+# ------- TELEGRAM SEND -------
+def send_telegram_message(text):
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
-
-    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    data = {"chat_id": chat_id, "text": message}
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
 
     try:
-        r = requests.post(url, data=data)
-        print("Telegram sent:", r.text)
+        requests.post(url, json={"chat_id": chat_id, "text": text})
+        print("Telegram sent!")
     except Exception as e:
         print("Telegram failed:", e)
 
+# ------- NAUKRI SCRAPER -------
+def search_naukri_jobs():
+    url = "https://www.naukri.com/machine-learning-fresher-jobs"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
 
-# --------------------------
-# Simulated Job Check Function
-# --------------------------
-def check_jobs():
-    # YOU CAN REPLACE THIS WITH REAL SCRAPING / API LOGIC
-    new_jobs = [
-        "🚀 Software Engineer - Google",
-        "🧠 AI/ML Engineer - Meta",
-        "🐍 Python Developer - Netflix"
-    ]
+    jobs = []
+    for job in soup.select(".jobTuple"):
+        title = job.select_one(".title").get_text(strip=True)
+        company = job.select_one(".subTitle").get_text(strip=True)
+        link = job.select_one("a")["href"]
 
-    if new_jobs:
-        body = "New Jobs Found:\n\n" + "\n".join(new_jobs)
-        send_email("New Job Alerts", body)
-        send_telegram_message(body)
-    else:
-        print("No new jobs today.")
+        jobs.append(f"📌 {title}\n🏢 {company}\n🔗 {link}")
 
+    return jobs
 
+# ------- MAIN -------
 if __name__ == "__main__":
-    check_jobs()
+    jobs = search_naukri_jobs()
+
+    if jobs:
+        body = "🔥 Daily Naukri Job Report\n\n" + "\n\n".join(jobs)
+        send_email("Daily Job Report", body)
+        send_telegram_message(body)
+        print("Notifications sent.")
+    else:
+        print("No new jobs found today.")
 ```
 
 ---
@@ -189,37 +213,37 @@ if __name__ == "__main__":
 # ⚙️ **GitHub Actions File → `.github/workflows/job-checker.yml`**
 
 ```yaml
-name: Job Checker Bot
+name: Daily Job Finder Bot
 
 on:
   schedule:
-    - cron: "0 */6 * * *"   # Every 6 hours
+    - cron: "30 12 * * *"    # 6:00 PM IST
   workflow_dispatch:
 
 jobs:
-  run-job-checker:
+  run-bot:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+    - name: Checkout repo
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
 
-      - name: Install dependencies
-        run: pip install requests
+    - name: Install Requirements
+      run: pip install -r requirements.txt
 
-      - name: Run job checker
-        env:
-          EMAIL_USER: ${{ secrets.EMAIL_USER }}
-          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
-          EMAIL_TO:   ${{ secrets.EMAIL_TO }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python job_checker.py
+    - name: Run Script
+      env:
+        SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+        GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+        DEST_EMAIL: ${{ secrets.DEST_EMAIL }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: python job_finder.py
 ```
 
 ---
