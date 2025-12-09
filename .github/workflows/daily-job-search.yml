@@ -21,7 +21,7 @@ jobs:
       - name: Cache sent jobs
         uses: actions/cache@v3
         with:
-          path: sent_jobs.json
+          path: src/sent_jobs.json
           key: sent-jobs-cache
 
       - name: Install dependencies
@@ -43,4 +43,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sent-jobs
-          path: sent_jobs.json
+          path: src/sent_jobs.json
