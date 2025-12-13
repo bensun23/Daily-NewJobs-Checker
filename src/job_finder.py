@@ -1,3 +1,5 @@
+print("🔥 UPDATED VERSION RUNNING 🔥")
+
 import smtplib
 import requests
 import os
