@@ -39,6 +39,7 @@ def send_telegram_message(message):
         data={"chat_id": os.getenv("TELEGRAM_CHAT_ID"), "text": message}
     )
     print("✅ Telegram sent")
+send_telegram_message("✅ Telegram test message from GitHub Actions")
 
 # --------------------------
 # Sent Jobs Tracker
@@ -102,20 +103,21 @@ def filter_jobs(jobs):
 # Main
 # --------------------------
 def check_jobs():
-    sent_jobs = load_sent_jobs()
+    print("🚀 Job checker started")
+
     all_jobs = fetch_jobs()
-    filtered_jobs = filter_jobs(all_jobs)
+    print(f"🧪 Jobs fetched: {len(all_jobs)}")
 
-    new_jobs = [j for j in filtered_jobs if j not in sent_jobs]
-
-    if not new_jobs:
-        print("ℹ️ Silent mode: no new jobs found")
-        return   # 🚫 NO EMAIL, NO TELEGRAM
-
-    message = "🔥 NEW JOBS FOUND 🔥\n\n" + "\n\n".join(new_jobs)
-    send_email("High-Quality Job Alerts 🚀", message)
-    send_telegram_message(message)
-    save_sent_jobs(new_jobs)
+    if all_jobs:
+        body = "🔥 NEW JOB ALERTS 🔥\n\n" + "\n\n".join(all_jobs[:10])
+        send_email("Daily Job Alerts", body)
+        send_telegram_message(body)
+        print("✅ Notifications sent")
+    else:
+        print("⚠️ No jobs found — skipping notifications")
 
 if __name__ == "__main__":
-    check_jobs()
+    send_email(
+        "TEST EMAIL FROM GITHUB ACTIONS",
+        "If you received this, Gmail config is working."
+    )
