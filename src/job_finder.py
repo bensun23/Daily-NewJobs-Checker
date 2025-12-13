@@ -39,7 +39,7 @@ def send_telegram_message(message):
         data={"chat_id": os.getenv("TELEGRAM_CHAT_ID"), "text": message}
     )
     print("✅ Telegram sent")
-send_telegram_message("✅ Telegram test message from GitHub Actions")
+    send_telegram_message("✅ Telegram test message from GitHub Actions")
 
 # --------------------------
 # Sent Jobs Tracker
