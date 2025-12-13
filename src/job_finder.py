@@ -121,6 +121,13 @@ def check_jobs():
         send_email("Daily Job Alert – No Jobs", msg)
         send_telegram_message(msg)
         print(msg)
+    if not new_jobs:
+        msg = "ℹ️ No new jobs found. Bot ran successfully, but no jobs matched today."
+        send_email("Job Update – No Jobs Found", msg)
+        send_telegram_message(msg)
+        print("📭 No jobs found notification sent")
+        return
+
 
 if __name__ == "__main__":
     check_jobs()
