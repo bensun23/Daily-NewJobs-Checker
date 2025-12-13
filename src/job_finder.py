@@ -59,22 +59,27 @@ def save_sent_jobs(jobs):
 def fetch_jobs():
     sources = [
         ("Indeed", "https://in.indeed.com/rss?q=data+science+fresher"),
-        ("Google Jobs", "https://www.google.com/search?q=AI+ML+fresher+jobs+India&output=rss"),
-        ("Startup Jobs", "https://www.google.com/search?q=startup+ai+ml+jobs+India&output=rss"),
+        ("Google Jobs", "https://www.google.com/search?q=ai+ml+fresher+jobs+india&output=rss"),
+        ("Startup Jobs", "https://www.google.com/search?q=startup+ai+ml+jobs+india&output=rss"),
     ]
 
     jobs = []
 
     for source, url in sources:
         response = requests.get(url, timeout=20)
-        soup = BeautifulSoup(response.text, "html.parser")
+        soup = BeautifulSoup(response.text, "html.parser")  # ✅ FIXED
 
-        for item in soup.find_all("item")[:10]:
-            title = item.title.text.strip()
-            link = item.link.text.strip()
-            jobs.append(f"[{source}] {title}\n{link}")
+        for item in soup.find_all("item"):
+            title = item.find("title")
+            link = item.find("link")
+
+            if not title or not link:
+                continue
+
+            jobs.append(f"[{source}] {title.text.strip()}\n{link.text.strip()}")
 
     return jobs
+
 
 # --------------------------
 # Filter Jobs
