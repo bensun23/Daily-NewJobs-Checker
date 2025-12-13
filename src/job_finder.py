@@ -69,7 +69,7 @@ def fetch_jobs():
 
     for source, url in sources:
         response = requests.get(url, timeout=20)
-        soup = BeautifulSoup(response.text, "xml")
+        soup = BeautifulSoup(response.text, "html.parser")
 
         for item in soup.find_all("item")[:10]:
             title = item.title.text.strip()
@@ -78,6 +78,7 @@ def fetch_jobs():
 
     print(f"🔍 Total jobs fetched: {len(jobs)}")
     return jobs
+
 
 # --------------------------
 # Main Logic
