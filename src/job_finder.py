@@ -7,7 +7,9 @@ from bs4 import BeautifulSoup
 
 SENT_JOBS_FILE = "sent_jobs.txt"
 
-# Companies you care about
+# --------------------------
+# Filter keywords
+# --------------------------
 TARGET_COMPANIES = ["google", "amazon", "zoho"]
 STARTUP_KEYWORDS = ["startup", "early", "seed", "series"]
 
@@ -21,23 +23,26 @@ def send_email(subject, body):
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain"))
 
-    server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.starttls()
-    server.login(msg["From"], os.getenv("GMAIL_PASSWORD"))
-    server.sendmail(msg["From"], msg["To"], msg.as_string())
-    server.quit()
-    print("✅ Email sent")
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(msg["From"], os.getenv("GMAIL_PASSWORD"))
+        server.sendmail(msg["From"], msg["To"], msg.as_string())
+        server.quit()
+        print("✅ Email sent")
+    except Exception as e:
+        print("❌ Email failed:", e)
 
 # --------------------------
 # Telegram
 # --------------------------
 def send_telegram_message(message):
-    url = f"https://api.telegram.org/bot{os.getenv('TELEGRAM_BOT_TOKEN')}/sendMessage"
-    requests.post(
-        url,
-        data={"chat_id": os.getenv("TELEGRAM_CHAT_ID"), "text": message}
-    )
-    print("✅ Telegram sent")
+    try:
+        url = f"https://api.telegram.org/bot{os.getenv('TELEGRAM_BOT_TOKEN')}/sendMessage"
+        requests.post(url, data={"chat_id": os.getenv("TELEGRAM_CHAT_ID"), "text": message})
+        print("✅ Telegram sent")
+    except Exception as e:
+        print("❌ Telegram failed:", e)
 
 # --------------------------
 # Sent Jobs Tracker
@@ -53,16 +58,15 @@ def save_sent_jobs(jobs):
             f.write(job + "\n")
 
 # --------------------------
-# Fetch Jobs from Multiple Sources
+# Fetch jobs from multiple sources
 # --------------------------
 def fetch_jobs():
     sources = [
-        # Indeed jobs RSS
         ("Indeed", "https://in.indeed.com/rss?q=software+developer+fresher"),
-        # AngelList / Startup jobs RSS (example)
+        ("Naukri", "https://www.naukri.com/software-developer-jobs/rss"),
         ("AngelList", "https://angel.co/jobs?keywords=ai&remote=true"),
-        # Freshersworld RSS (example)
-        ("Freshersworld", "https://www.freshersworld.com/rss/jobs/software-developer")
+        ("Freshersworld", "https://www.freshersworld.com/rss/jobs/software-developer"),
+        ("LinkedIn", "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=AI+ML+Fresher")
     ]
 
     jobs = []
@@ -71,24 +75,23 @@ def fetch_jobs():
         try:
             response = requests.get(url, timeout=20)
             soup = BeautifulSoup(response.text, "html.parser")
-            for item in soup.find_all("item")[:10]:  # fetch first 10 items
+            for item in soup.find_all("item")[:10]:
                 title = item.find("title")
                 link = item.find("link")
                 if not title or not link:
                     continue
                 jobs.append(f"[{source}] {title.text.strip()}\n{link.text.strip()}")
         except Exception as e:
-            print(f"⚠️ Failed to fetch from {source}: {e}")
+            print(f"⚠️ Failed to fetch jobs from {source}: {e}")
 
     print(f"🔍 Total jobs fetched: {len(jobs)}")
     return jobs
 
 # --------------------------
-# Filter Jobs
+# Filter jobs
 # --------------------------
 def filter_jobs(jobs):
     filtered = []
-
     for job in jobs:
         text = job.lower()
         if any(c in text for c in TARGET_COMPANIES):
@@ -107,15 +110,17 @@ def check_jobs():
     filtered_jobs = filter_jobs(all_jobs)
     new_jobs = [j for j in filtered_jobs if j not in sent_jobs]
 
-    if not new_jobs:
-        print("ℹ️ Silent mode: no new jobs found")
-        return  # silent mode, do not send notifications
-
-    message = "🔥 NEW JOB ALERTS 🔥\n\n" + "\n\n".join(new_jobs)
-    send_email("Daily Job Alerts 🚀", message)
-    send_telegram_message(message)
-    save_sent_jobs(new_jobs)
-    print(f"✅ Sent {len(new_jobs)} new jobs")
+    if new_jobs:
+        message = "🔥 NEW JOB ALERTS 🔥\n\n" + "\n\n".join(new_jobs)
+        send_email("Daily Job Alerts 🚀", message)
+        send_telegram_message(message)
+        save_sent_jobs(new_jobs)
+        print(f"✅ Sent {len(new_jobs)} new jobs")
+    else:
+        msg = "ℹ️ No new jobs found today. Bot ran successfully, but no jobs matched your criteria."
+        send_email("Daily Job Alert – No Jobs", msg)
+        send_telegram_message(msg)
+        print(msg)
 
 if __name__ == "__main__":
     check_jobs()
