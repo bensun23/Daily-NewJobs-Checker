@@ -26,7 +26,6 @@ def send_email(subject, body):
     server.login(msg["From"], os.getenv("GMAIL_PASSWORD"))
     server.sendmail(msg["From"], msg["To"], msg.as_string())
     server.quit()
-
     print("✅ Email sent")
 
 # --------------------------
@@ -39,7 +38,6 @@ def send_telegram_message(message):
         data={"chat_id": os.getenv("TELEGRAM_CHAT_ID"), "text": message}
     )
     print("✅ Telegram sent")
-    send_telegram_message("✅ Telegram test message from GitHub Actions")
 
 # --------------------------
 # Sent Jobs Tracker
@@ -55,32 +53,35 @@ def save_sent_jobs(jobs):
             f.write(job + "\n")
 
 # --------------------------
-# Fetch Jobs (RSS)
+# Fetch Jobs from Multiple Sources
 # --------------------------
 def fetch_jobs():
     sources = [
-        ("Indeed", "https://in.indeed.com/rss?q=data+science+fresher"),
-        ("Google Jobs", "https://www.google.com/search?q=ai+ml+fresher+jobs+india&output=rss"),
-        ("Startup Jobs", "https://www.google.com/search?q=startup+ai+ml+jobs+india&output=rss"),
+        # Indeed jobs RSS
+        ("Indeed", "https://in.indeed.com/rss?q=software+developer+fresher"),
+        # AngelList / Startup jobs RSS (example)
+        ("AngelList", "https://angel.co/jobs?keywords=ai&remote=true"),
+        # Freshersworld RSS (example)
+        ("Freshersworld", "https://www.freshersworld.com/rss/jobs/software-developer")
     ]
 
     jobs = []
 
     for source, url in sources:
-        response = requests.get(url, timeout=20)
-        soup = BeautifulSoup(response.text, "html.parser")  # ✅ FIXED
+        try:
+            response = requests.get(url, timeout=20)
+            soup = BeautifulSoup(response.text, "html.parser")
+            for item in soup.find_all("item")[:10]:  # fetch first 10 items
+                title = item.find("title")
+                link = item.find("link")
+                if not title or not link:
+                    continue
+                jobs.append(f"[{source}] {title.text.strip()}\n{link.text.strip()}")
+        except Exception as e:
+            print(f"⚠️ Failed to fetch from {source}: {e}")
 
-        for item in soup.find_all("item"):
-            title = item.find("title")
-            link = item.find("link")
-
-            if not title or not link:
-                continue
-
-            jobs.append(f"[{source}] {title.text.strip()}\n{link.text.strip()}")
-
+    print(f"🔍 Total jobs fetched: {len(jobs)}")
     return jobs
-
 
 # --------------------------
 # Filter Jobs
@@ -90,13 +91,10 @@ def filter_jobs(jobs):
 
     for job in jobs:
         text = job.lower()
-
         if any(c in text for c in TARGET_COMPANIES):
             filtered.append("🏢 COMPANY JOB\n" + job)
-
         elif any(k in text for k in STARTUP_KEYWORDS):
             filtered.append("🚀 STARTUP JOB\n" + job)
-
     return filtered
 
 # --------------------------
@@ -104,20 +102,20 @@ def filter_jobs(jobs):
 # --------------------------
 def check_jobs():
     print("🚀 Job checker started")
-
+    sent_jobs = load_sent_jobs()
     all_jobs = fetch_jobs()
-    print(f"🧪 Jobs fetched: {len(all_jobs)}")
+    filtered_jobs = filter_jobs(all_jobs)
+    new_jobs = [j for j in filtered_jobs if j not in sent_jobs]
 
-    if all_jobs:
-        body = "🔥 NEW JOB ALERTS 🔥\n\n" + "\n\n".join(all_jobs[:10])
-        send_email("Daily Job Alerts", body)
-        send_telegram_message(body)
-        print("✅ Notifications sent")
-    else:
-        print("⚠️ No jobs found — skipping notifications")
+    if not new_jobs:
+        print("ℹ️ Silent mode: no new jobs found")
+        return  # silent mode, do not send notifications
+
+    message = "🔥 NEW JOB ALERTS 🔥\n\n" + "\n\n".join(new_jobs)
+    send_email("Daily Job Alerts 🚀", message)
+    send_telegram_message(message)
+    save_sent_jobs(new_jobs)
+    print(f"✅ Sent {len(new_jobs)} new jobs")
 
 if __name__ == "__main__":
-    send_email(
-        "TEST EMAIL FROM GITHUB ACTIONS",
-        "If you received this, Gmail config is working."
-    )
+    check_jobs()
