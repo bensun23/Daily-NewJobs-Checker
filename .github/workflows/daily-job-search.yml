@@ -2,7 +2,7 @@ name: Job Checker Bot
 
 on:
   schedule:
-    - cron: "30 12 * * *"   # Runs every day at 6 PM IST
+    - cron: "0 */6 * * *"   # Runs every 6 hours (UTC)
   workflow_dispatch:
 
 jobs:
@@ -20,8 +20,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests
-          pip install beautifulsoup4
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 openpyxl reportlab
 
       - name: Run job checker
         env:
